@@ -10,7 +10,7 @@
       null))
 
 (define (string-append-map xs suffix)
-  (map string-append xs))
+  (map (lambda (x) (string-append x suffix)) xs))
 
 (define (list-nth-mod xs n)
   (if (< n 0)
@@ -20,28 +20,60 @@
           (car (list-tail xs (remainder n (length xs)))))))
 
 (define (stream-for-n-steps s n)
-  (letrec ([wrapper (lambda (xs s n)
-                  (if (> n 0)
-                      (cons (car (s)) (wrapper xs (cdr (s)) (- n 1)))
-                      xs))])
-  (wrapper null s n)))
+  (letrec ([f (lambda (xs s n)
+                (if (> n 0)
+                    (cons (car (s)) (f xs (cdr (s)) (- n 1)))
+                    xs))])
+    (f null s n)))
 
 (define funny-number-stream
-  (letrec ([f (lambda (x) (cons x (lambda () (f
-                                              (if (= (remainder (+ x 1) 5) 0)
-                                                  (- (+ (abs x) 1))
-                                                  (+ (abs x) 1))))))])
+  (letrec ([f (lambda (x) (cons x (lambda ()
+                                    (let ([real-num (+ (abs x) 1)])
+                                      (f (if (= (remainder real-num 5) 0)
+                                             (- real-num)
+                                             real-num))))))])
     (lambda () (f 1))))
 
 (define dan-then-dog
-  (letrec ([f (lambda (x) (if (even? x)
-                              (cons "dan.jpg" (lambda () (f (+ x 1))))
-                              (cons "dog.jpg" (lambda () (f (+ x 1))))))])
+  (letrec ([f (lambda (x) (cons (if (even? x)
+                                    "dan.jpg"
+                                    "dog.jpg")
+                                (lambda () (f (+ x 1)))))])
     (lambda () (f 0))))
 
 (define (stream-add-zero s)
-  0)
+  (letrec ([f (lambda (pr) (cons (cons 0 (car pr)) (lambda () (f ((cdr pr))))))])
+    (lambda() (f (s)))))
 
-(define powers-of-two
-  (letrec ([f (lambda (x) (cons x (lambda () (f (* x 2)))))])
-    (lambda () (f 2))))
+(define (cycle-lists xs ys)
+  (letrec ([f (lambda (x) (cons (cons (list-nth-mod xs x) (list-nth-mod ys x))
+                                (lambda () (f (+ x 1)))))])
+    (lambda () (f 0))))
+
+(define (vector-assoc v vec)
+  (letrec ([f (lambda (vec n)
+                (let ([it (if (< n (vector-length vec))
+                              (vector-ref vec n)
+                              #f)])
+                  (if (not it) #f
+                      (cond [(pair? it) (if (equal? (car it) v)
+                                            it
+                                            (f vec (+ n 1)))]
+                            [#t (f vec (+ n 1))]))))])
+    (f vec 0)))
+
+(define (cached-assoc xs n)
+  (letrec ([memo (make-vector n #f)]
+           [slot 0]
+           [f (lambda (v)
+                (let ([ans (vector-assoc v memo)])
+                  (if ans
+                      ans
+                      (let ([missed-item (assoc v xs)])
+                        (begin
+                          (vector-set! memo slot missed-item)
+                          (set! slot (remainder (+ slot 1) n))
+                          missed-item)))))])
+    f))
+                  
+              
