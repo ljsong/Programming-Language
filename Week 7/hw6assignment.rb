@@ -29,7 +29,7 @@ class MyBoard < Board
   def initialize(game)
     @grid = Array.new(num_rows) {Array.new(num_columns)}
     @current_block = MyPiece.next_piece(self)
-    @score = 1000
+    @score = 0
     @game = game
     @delay = 500
   end
